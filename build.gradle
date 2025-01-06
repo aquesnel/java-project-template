@@ -6,6 +6,9 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     id 'application'
+    // test code coverage report
+    id('jacoco')
+    
     // eclipse IDE plugin with annotation processing
     //id "eclipse"
     id("com.diffplug.eclipse.apt").version("3.44.0")
@@ -52,7 +55,45 @@ java {
 tasks.named('test') {
 	useJUnitPlatform()
 	jvmArgs('-XX:+EnableDynamicAgentLoading') // For Mockito
+    finalizedBy jacocoTestReport // report is always generated after tests run
 }
+
+jacoco {
+    reportsDirectory = layout.buildDirectory.dir('reports/jacoco')
+}
+jacocoTestReport {
+    dependsOn test // tests are required to run before generating the report
+    
+    reports {
+        html.required = true
+    }
+}
+jacocoTestCoverageVerification {
+    dependsOn test
+    dependsOn jacocoTestReport // generate the report for debugging a coverage failure
+    
+    // DOCS: https://www.jacoco.org/jacoco/trunk/doc/ant.html : Element check
+    violationRules {
+        rule {
+            enabled = true
+            element = "BUNDLE"
+            includes = ["*"]
+            excludes = []
+
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = 0.01
+            }
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = 0.00
+            }
+        }
+    }
+}
+tasks.check.dependsOn(jacocoTestCoverageVerification)
 
 spotless {
   	java {
